@@ -4253,3 +4253,194 @@ function hideLockoutPanel() {
     siteLockoutDiv.innerHTML = '';
   }
 }
+
+// --- Firebase Auth Setup ---
+const firebaseConfig = {
+  apiKey: "AIzaSyBlb3hVDT1MZiIQM0eqVypw6EZACm14bdM",
+  authDomain: "blueprint-57ad7.firebaseapp.com",
+  projectId: "blueprint-57ad7",
+  storageBucket: "blueprint-57ad7.firebasestorage.app",
+  messagingSenderId: "517594030536",
+  appId: "1:517594030536:web:472aa72fbe3623d3c660fd",
+  measurementId: "G-1VCM6B0D39"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+// --- GitHub Login Modal Logic ---
+function openLoginModal() {
+  document.getElementById('loginModal').classList.add('show');
+}
+function closeLoginModal() {
+  document.getElementById('loginModal').classList.remove('show');
+}
+function githubLogin() {
+  const provider = new firebase.auth.GithubAuthProvider();
+  auth.signInWithPopup(provider)
+    .then((result) => {
+      const user = result.user;
+      alert(`Welcome, ${user.displayName || user.email || 'GitHub user'}!`);
+      closeLoginModal();
+      // You can now use user info in your app
+    })
+    .catch((error) => {
+      alert('Login failed: ' + error.message);
+    });
+}
+auth.onAuthStateChanged((user) => {
+  const appContainer = document.querySelector('.container');
+  const copyrightFooter = document.querySelector('.copyright-footer');
+  const userInfoBar = document.getElementById('userInfoBar');
+  if (user) {
+    // User is logged in: show app, hide login modal
+    if (appContainer) appContainer.style.display = '';
+    if (copyrightFooter) copyrightFooter.style.display = '';
+    closeLoginModal();
+    // Show user info bar (force display: flex)
+    if (userInfoBar) {
+      userInfoBar.style.display = 'flex';
+      userInfoBar.innerHTML = `
+        <img class="user-avatar" src="${user.photoURL || ''}" alt="User avatar">
+        <div class="user-details">
+          <span class="user-name">${user.displayName || 'GitHub User'}</span>
+          <span class="user-email">${user.email || ''}</span>
+        </div>
+        <button id="changeAccountButton" class="toolbar-button small" style="margin-left:12px; min-width:120px;">Change Account</button>
+        <button id="logoutButton" class="toolbar-button small" style="margin-left:6px; min-width:90px;">Log Out</button>
+      `;
+      // Attach event listeners after setting innerHTML
+      document.getElementById('logoutButton').onclick = function() {
+        auth.signOut().then(() => {
+          showNotification('Logged out successfully', 'success');
+        }).catch((error) => {
+          showNotification('Logout failed: ' + error.message, 'error');
+        });
+      };
+      document.getElementById('changeAccountButton').onclick = function() {
+        openChangeAccountModal();
+      };
+    }
+  } else {
+    // User not logged in: hide app, show login modal
+    if (appContainer) appContainer.style.display = 'none';
+    if (copyrightFooter) copyrightFooter.style.display = 'none';
+    openLoginModal();
+    // Hide user info bar
+    if (userInfoBar) {
+      userInfoBar.style.display = 'none';
+      userInfoBar.innerHTML = '';
+    }
+  }
+});
+// ... existing code ...
+// On page load, check auth state immediately
+window.addEventListener('DOMContentLoaded', () => {
+  if (!auth.currentUser) {
+    openLoginModal();
+    const appContainer = document.querySelector('.container');
+    const copyrightFooter = document.querySelector('.copyright-footer');
+    if (appContainer) appContainer.style.display = 'none';
+    if (copyrightFooter) copyrightFooter.style.display = 'none';
+  }
+});
+
+// --- Log Out and Change Account Logic ---
+document.addEventListener('DOMContentLoaded', function() {
+  const logoutButton = document.getElementById('logoutButton');
+  const changeAccountButton = document.getElementById('changeAccountButton');
+  if (logoutButton) {
+    logoutButton.onclick = function() {
+      auth.signOut().then(() => {
+        showNotification('Logged out successfully', 'success');
+      }).catch((error) => {
+        showNotification('Logout failed: ' + error.message, 'error');
+      });
+    };
+  }
+  if (changeAccountButton) {
+    changeAccountButton.onclick = function() {
+      openChangeAccountModal();
+    };
+  }
+});
+
+function openChangeAccountModal() {
+  const modal = document.getElementById('changeAccountModal');
+  if (modal) modal.classList.add('show');
+  renderAccountList();
+}
+function closeChangeAccountModal() {
+  const modal = document.getElementById('changeAccountModal');
+  if (modal) modal.classList.remove('show');
+}
+
+// For demo: store accounts in localStorage (in real app, use secure storage)
+function getStoredAccounts() {
+  try {
+    return JSON.parse(localStorage.getItem('bp_accounts') || '[]');
+  } catch { return []; }
+}
+function setStoredAccounts(accounts) {
+  localStorage.setItem('bp_accounts', JSON.stringify(accounts));
+}
+
+function renderAccountList() {
+  const accountList = document.getElementById('accountList');
+  if (!accountList) return;
+  const user = auth.currentUser;
+  let accounts = getStoredAccounts();
+  // Always show current user
+  let html = '';
+  if (user) {
+    html += `<div style='padding:10px;border-radius:8px;background:#23243a;margin-bottom:8px;display:flex;align-items:center;gap:10px;'>` +
+      `<img src='${user.photoURL || ''}' alt='avatar' style='width:32px;height:32px;border-radius:50%;border:1.5px solid #667eea;'>` +
+      `<div style='flex:1;text-align:left;'><div style='font-weight:700;color:#ffbd2e;'>${user.displayName || 'GitHub User'}</div><div style='font-size:0.9em;color:#b0b6c8;'>${user.email || ''}</div></div>` +
+      `<span style='font-size:0.9em;color:#27c93f;font-weight:600;'>Current</span></div>`;
+  }
+  if (accounts.length > 1 || (accounts.length === 1 && (!user || accounts[0].uid !== user.uid))) {
+    html += '<div style="margin-bottom:8px;font-size:0.95em;color:#aaa;">Other Accounts:</div>';
+    for (const acc of accounts) {
+      if (user && acc.uid === user.uid) continue;
+      html += `<div style='padding:8px;border-radius:8px;background:#181a20;margin-bottom:6px;display:flex;align-items:center;gap:10px;'>` +
+        `<img src='${acc.photoURL || ''}' alt='avatar' style='width:28px;height:28px;border-radius:50%;border:1px solid #667eea;'>` +
+        `<div style='flex:1;text-align:left;'><div style='font-weight:600;color:#ffbd2e;'>${acc.displayName || 'GitHub User'}</div><div style='font-size:0.9em;color:#b0b6c8;'>${acc.email || ''}</div></div>` +
+        `<button class='toolbar-button small' style='padding:4px 10px;font-size:0.85em;' onclick='switchToAccount("${acc.uid}")'>Switch</button></div>`;
+    }
+  }
+  accountList.innerHTML = html;
+}
+
+function addNewAccount() {
+  // Sign in with GitHub, then store the new account
+  const provider = new firebase.auth.GithubAuthProvider();
+  auth.signInWithPopup(provider)
+    .then((result) => {
+      const user = result.user;
+      let accounts = getStoredAccounts();
+      if (!accounts.find(acc => acc.uid === user.uid)) {
+        accounts.push({
+          uid: user.uid,
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL
+        });
+        setStoredAccounts(accounts);
+      }
+      showNotification('Account added and switched', 'success');
+      closeChangeAccountModal();
+    })
+    .catch((error) => {
+      showNotification('Login failed: ' + error.message, 'error');
+    });
+}
+
+function switchToAccount(uid) {
+  // For demo: log out and ask user to log in as that account
+  showNotification('Please log in as the selected account.', 'info');
+  auth.signOut().then(() => {
+    closeChangeAccountModal();
+    setTimeout(() => {
+      openLoginModal();
+    }, 500);
+  });
+}
