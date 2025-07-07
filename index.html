@@ -23,6 +23,8 @@
   
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧩</text></svg>">
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
   <div id="site-lockout"></div>
@@ -492,5 +494,41 @@
 
   <!-- Scripts -->
   <script src="script.js"></script>
-</body>
+
+  <!-- Login Modal -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content" style="max-width: 350px; text-align: center;">
+      <div class="modal-header">
+        <h2>Sign in</h2>
+        <button class="modal-close" onclick="closeLoginModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <button class="github-login-btn" onclick="githubLogin()">
+          <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub" style="width:24px;vertical-align:middle;margin-right:8px;">
+          Sign in with GitHub
+        </button>
+        <p style="margin-top:16px;font-size:0.9em;color:#aaa;">We use GitHub to authenticate your account.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Account Modal -->
+  <div id="changeAccountModal" class="modal">
+    <div class="modal-content" style="max-width: 420px; min-width: 320px; text-align: center;">
+      <div class="modal-header">
+        <h2>Change Account</h2>
+        <button class="modal-close" onclick="closeChangeAccountModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="accountList" style="margin-bottom: 18px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-button secondary" onclick="closeChangeAccountModal()">Close</button>
+        <button class="modal-button primary" onclick="addNewAccount()">Add Account</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="userInfoBar" style="position: fixed; top: 10px; right: 16px; z-index: 10010; display: none;"></div>
+  </body>
 </html>
