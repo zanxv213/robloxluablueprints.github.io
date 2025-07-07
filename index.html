@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Roblox Lua Blockly Editor - Visual programming interface for creating Roblox scripts" />
+  <meta name="keywords" content="Roblox, Lua, Blockly, Visual Programming, Game Development" />
+  <meta name="author" content="Roblox Lua Blockly Editor" />
+  <meta name="theme-color" content="#667eea" />
+  
+  <title>Roblox Lua Blockly Editor</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Blockly -->
+  <script src="https://unpkg.com/blockly/blockly.min.js"></script>
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧩</text></svg>">
+</head>
+<body>
+
+  <div class="container">
+    <aside class="sidebar">
+      <header class="sidebar-header">
+        <h1 class="app-title">Lua Blockly Editor</h1>
+        <p class="app-subtitle">Visual Roblox Scripting</p>
+      </header>
+      
+      <nav class="toolbar">
+        <button class="toolbar-button primary" onclick="generateCode()" title="Generate Lua code from the workspace">
+          <span class="button-icon">⚡</span>
+          Generate Code
+        </button>
+
+        <button class="toolbar-button" onclick="saveWorkspace()" title="Save your workspace to local storage">
+          <span class="button-icon">💾</span>
+          Save
+        </button>
+        <button class="toolbar-button" onclick="loadWorkspace()" title="Load a saved workspace">
+          <span class="button-icon">📂</span>
+          Load
+        </button>
+        <button class="toolbar-button" onclick="clearWorkspace()" title="Clear the current workspace">
+          <span class="button-icon">🗑️</span>
+          Clear
+        </button>
+        <button class="toolbar-button" id="copyButton" title="Copy generated Lua code to clipboard">
+          <span class="button-icon">📋</span>
+          Copy Code
+        </button>
+        <button class="toolbar-button" id="validateScriptButton" title="Validate and check your script for errors">
+          <span class="button-icon">✅</span>
+          Validate Script
+        </button>
+
+        <button class="toolbar-button" id="undoButton" title="Undo last script changes with history">
+          <span class="button-icon">↩️</span>
+          Undo Changes
+        </button>
+
+      </nav>
+      
+
+      
+      <footer class="sidebar-footer">
+        <div class="status-indicator">
+          <span class="status-dot"></span>
+          <span class="status-text">Ready</span>
+        </div>
+      </footer>
+    </aside>
+    
+    <main class="main-content">
+      <section class="workspace-section">
+        <header class="section-header">
+          <h2 class="section-title">Visual Editor</h2>
+          <div class="section-actions">
+            <button class="action-button" onclick="organizeWorkspace()" title="Organize blocks automatically">
+              <span class="button-icon">🔧</span>
+              Organize
+            </button>
+            <button class="action-button" onclick="fixOutputScript()" title="Fix and optimize the generated script">
+              <span class="button-icon">🛠️</span>
+              Fix Script
+            </button>
+
+          </div>
+        </header>
+        <div id="blocklyDiv" class="blockly-workspace"></div>
+      </section>
+      
+      <section class="code-section">
+        <header class="section-header">
+          <h2 class="section-title">Generated Lua Code</h2>
+          <div class="section-actions">
+            <button class="action-button small" onclick="toggleCodePanel()" title="Maximize/minimize code panel">
+              <span class="button-icon" id="toggleIcon">📏</span>
+              <span id="toggleText">Maximize</span>
+            </button>
+            <button class="action-button small" onclick="formatCode()" title="Format the generated code">
+              <span class="button-icon">✨</span>
+              Format
+            </button>
+          </div>
+        </header>
+        <div class="code-container">
+          <div class="code-output-wrapper">
+            <div class="code-output-handle"></div>
+            <pre id="codeOutput" class="code-output">-- Lua code will appear here
+-- Drag blocks from the toolbox to start coding!</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  
+  <div id="loadingIndicator" class="loading-indicator">
+    <div class="loading-spinner"></div>
+    <span>Loading Blockly...</span>
+  </div>
+
+
+
+  <!-- Code Generator Modal -->
+  <div id="codeGeneratorModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>✨ Generate Code from Text</h2>
+        <button class="modal-close" onclick="closeCodeGeneratorModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="smart-block-intro">
+          <p>Describe what you want to build in plain English, and AI will generate the Lua code for you!</p>
+        </div>
+        
+        <div class="form-group">
+          <label for="codeDescription">Describe your code:</label>
+          <textarea id="codeDescription" placeholder="Example: Create a red part that moves up and down when clicked&#10;Example: Make the player walk faster when they press shift&#10;Example: Create a GUI with a button that prints hello world" class="form-textarea code-input" rows="4"></textarea>
+          <small>Be as detailed as possible for better results</small>
+        </div>
+        
+        <div class="smart-analysis-section">
+          <button class="analyze-btn" onclick="generateCodeFromText()">
+            <span class="button-icon">🚀</span>
+            Generate Code
+          </button>
+        </div>
+        
+        <div id="generatedCodeResults" class="analysis-results" style="display: none;">
+          <h3>Generated Code</h3>
+          <div class="analysis-grid">
+            <div class="analysis-item">
+              <label>Template Used:</label>
+              <span id="templateUsed" class="analysis-value">-</span>
+            </div>
+            <div class="analysis-item">
+              <label>Code Length:</label>
+              <span id="codeLength" class="analysis-value">-</span>
+            </div>
+          </div>
+          
+          <div class="code-preview">
+            <h4>Generated Lua Code:</h4>
+            <pre id="generatedCodePreview" class="code-preview-content"></pre>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-button secondary" onclick="closeCodeGeneratorModal()">Cancel</button>
+        <button class="modal-button primary" onclick="useGeneratedCode()" id="useGeneratedCodeBtn" style="display: none;">Use This Code</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Block Modal -->
+  <div id="customBlockModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Create Smart Custom Block</h2>
+        <button class="modal-close" onclick="closeCustomBlockModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="smart-block-intro">
+          <p>Just paste your Lua code and let AI analyze it to create the perfect block!</p>
+        </div>
+        
+        <div class="form-group">
+          <label for="blockName">Block Name:</label>
+          <input type="text" id="blockName" placeholder="my_custom_block" class="form-input">
+          <small>Will be auto-generated if left empty</small>
+        </div>
+        
+        <div class="form-group">
+          <label for="smartLuaCode">Your Lua Code:</label>
+          <textarea id="smartLuaCode" placeholder="-- Paste your Lua code here&#10;-- Example:&#10;local player = game.Players.LocalPlayer&#10;player.Character.Humanoid.WalkSpeed = 50&#10;print('Speed set to 50')" class="form-textarea code-input"></textarea>
+          <small>Paste your Lua code and we'll analyze it automatically</small>
+        </div>
+        
+        <div class="smart-analysis-section">
+          <button class="analyze-btn" onclick="analyzeCode()">
+            <span class="button-icon">🔍</span>
+            Analyze Code
+          </button>
+        </div>
+        
+        <div id="analysisResults" class="analysis-results" style="display: none;">
+          <h3>Smart Analysis Results</h3>
+          <div class="analysis-grid">
+            <div class="analysis-item">
+              <label>Suggested Category:</label>
+              <span id="suggestedCategory" class="analysis-value">-</span>
+            </div>
+            <div class="analysis-item">
+              <label>Block Type:</label>
+              <span id="suggestedType" class="analysis-value">-</span>
+            </div>
+            <div class="analysis-item">
+              <label>Display Text:</label>
+              <span id="suggestedText" class="analysis-value">-</span>
+            </div>
+            <div class="analysis-item">
+              <label>Color:</label>
+              <span id="suggestedColor" class="analysis-value">-</span>
+            </div>
+          </div>
+          
+          <div class="detected-inputs">
+            <h4>Detected Inputs:</h4>
+            <div id="detectedInputsList" class="detected-inputs-list">
+              <!-- Detected inputs will be shown here -->
+            </div>
+          </div>
+          
+          <div class="code-preview">
+            <h4>Code Preview:</h4>
+            <pre id="codePreview" class="code-preview-content"></pre>
+          </div>
+        </div>
+        
+        <div class="advanced-options" style="display: none;">
+          <h3>Advanced Options</h3>
+          <div class="form-group">
+            <label for="blockColor">Block Color:</label>
+            <input type="color" id="blockColor" value="#667eea" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="blockCategory">Category:</label>
+            <select id="blockCategory" class="form-input">
+              <option value="Custom">Custom</option>
+              <option value="Environment">Environment</option>
+              <option value="Events">Events</option>
+              <option value="Logic">Logic</option>
+              <option value="Control">Control</option>
+              <option value="Loops">Loops</option>
+              <option value="Functions">Functions</option>
+              <option value="Math">Math</option>
+              <option value="Text">Text</option>
+              <option value="Player">Player</option>
+              <option value="Tables">Tables</option>
+              <option value="Remote Events">Remote Events</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="blockType">Block Type:</label>
+            <select id="blockType" class="form-input">
+              <option value="statement">Statement (No output)</option>
+              <option value="value">Value (With output)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-button secondary" onclick="closeCustomBlockModal()">Cancel</button>
+        <button class="modal-button" onclick="toggleAdvancedOptions()">Advanced Options</button>
+        <button class="modal-button primary" onclick="createSmartCustomBlock()">Create Block</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Custom Blocks Manager Modal -->
+  <div id="customBlocksManagerModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Manage Custom Blocks</h2>
+        <button class="modal-close" onclick="closeCustomBlocksManager()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="customBlocksList" class="custom-blocks-list">
+          <!-- Custom blocks will be listed here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-button secondary" onclick="closeCustomBlocksManager()">Close</button>
+        <button class="modal-button danger" onclick="deleteAllCustomBlocks()">Delete All</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Validate Script Modal -->
+  <div id="validateScriptModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Script Validation Results</h2>
+        <button class="modal-close" onclick="closeValidateScriptModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="validationResults" class="validation-results">
+          <!-- Validation results will be shown here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-button secondary" onclick="closeValidateScriptModal()">Close</button>
+        <button class="modal-button primary" onclick="applyValidationFixes()">Apply Fixes</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Undo History Modal -->
+  <div id="undoHistoryModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Change History</h2>
+        <button class="modal-close" onclick="closeUndoHistoryModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="historyList" class="history-list">
+          <!-- History items will be populated here -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-button secondary" onclick="closeUndoHistoryModal()">Close</button>
+        <button class="modal-button primary" onclick="restoreToSelectedHistory()">Restore to This Point</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Toolbox XML -->
+  <xml id="toolbox" style="display: none">
+    <category name="Environment" colour="230">
+      <block type="spawn_part"></block>
+      <block type="rotate_part"></block>
+      <block type="set_part_position"></block>
+      <block type="get_part_position"></block>
+      <block type="set_part_color"></block>
+      <block type="get_part_color"></block>
+      <block type="set_part_size"></block>
+      <block type="get_part_size"></block>
+      <block type="create_tween"></block>
+    </category>
+    <category name="Events" colour="260">
+      <block type="event_touched"></block>
+      <block type="event_clickdetector"></block>
+      <block type="event_player_added"></block>
+      <block type="event_character_added"></block>
+      <block type="event_key_pressed"></block>
+      <block type="event_timer"></block>
+      <block type="event_player_removing"></block>
+      <block type="event_player_damaged"></block>
+      <block type="event_player_jumped"></block>
+      <block type="event_player_landed"></block>
+      <block type="event_part_destroyed"></block>
+    </category>
+    <category name="Variables" custom="VARIABLE" colour="330"></category>
+    <category name="Logic" colour="210">
+      <block type="controls_if"></block>
+      <block type="logic_compare"></block>
+      <block type="logic_compare_advanced"></block>
+      <block type="logic_and"></block>
+      <block type="logic_or"></block>
+      <block type="logic_not"></block>
+      <block type="is_player_jumping"></block>
+      <block type="is_player_grounded"></block>
+      <block type="is_part_exists"></block>
+      <block type="check_player_near_part"></block>
+      <block type="check_player_stat"></block>
+      <block type="custom_condition"></block>
+    </category>
+    <category name="Control" colour="200">
+      <block type="wait">
+        <value name="TIME">
+          <block type="math_number">
+            <field name="NUM">1</field>
+          </block>
+        </value>
+      </block>
+    </category>
+    <category name="Loops" colour="120">
+      <block type="controls_repeat_ext"></block>
+      <block type="controls_whileUntil"></block>
+      <block type="controls_for"></block>
+      <block type="controls_flow_statements"></block>
+    </category>
+    <category name="Functions" custom="PROCEDURE" colour="290"></category>
+    <category name="Math" colour="270">
+      <block type="math_number"><field name="NUM">0</field></block>
+      <block type="math_random_range"></block>
+      <block type="custom_math_floor"></block>
+      <block type="custom_math_round"></block>
+      <block type="math_arithmetic"></block>
+    </category>
+    <category name="Text" colour="160">
+      <block type="text_input"></block>
+      <block type="print_statement"></block>
+      <block type="text_raw"></block>
+    </category>
+    <category name="Player" colour="200">
+      <block type="get_player"></block>
+      <block type="set_player_walkspeed"></block>
+      <block type="create_team"></block>
+      <block type="get_player_walkspeed"></block>
+      <block type="set_player_health"></block>
+      <block type="get_player_health"></block>
+      <block type="set_player_maxhealth"></block>
+      <block type="get_player_maxhealth"></block>
+      <block type="set_player_jumppower"></block>
+      <block type="get_player_jumppower"></block>
+      <block type="set_player_hipheight"></block>
+      <block type="get_player_hipheight"></block>
+      <block type="set_player_position"></block>
+      <block type="get_player_position"></block>
+      <block type="set_player_rotation"></block>
+      <block type="get_player_rotation"></block>
+      <block type="set_player_team"></block>
+      <block type="get_player_team"></block>
+      <block type="set_player_cameramode"></block>
+      <block type="get_player_cameramode"></block>
+      <block type="set_player_camerazoom"></block>
+      <block type="get_player_camerazoom"></block>
+      <block type="teleport_player"></block>
+      <block type="respawn_player"></block>
+      <block type="give_player_tool"></block>
+      <block type="remove_player_tool"></block>
+      <block type="set_player_leaderstat"></block>
+      <block type="get_player_leaderstat"></block>
+      <block type="add_player_effect"></block>
+      <block type="remove_player_effect"></block>
+      <block type="play_player_animation"></block>
+      <block type="stop_player_animation"></block>
+      <block type="set_player_transparency"></block>
+      <block type="get_player_transparency"></block>
+      <block type="set_player_collision"></block>
+      <block type="get_player_collision"></block>
+    </category>
+    <category name="Tables" colour="250">
+      <block type="create_table"></block>
+      <block type="get_table_value"></block>
+      <block type="set_table_value"></block>
+      <block type="print_table_values"></block>
+    </category>
+    <category name="Remote Events" colour="290">
+      <block type="fire_remote_event"></block>
+      <block type="on_remote_event_received"></block>
+      <block type="sync_player_data"></block>
+      <block type="broadcast_to_all_clients"></block>
+    </category>
+    <category name="Leaderboards" colour="180">
+      <block type="create_leaderboard"></block>
+      <block type="add_leaderboard_stat"></block>
+      <block type="set_leaderboard_value"></block>
+      <block type="get_leaderboard_value"></block>
+      <block type="increment_leaderboard_value"></block>
+      <block type="decrement_leaderboard_value"></block>
+      <block type="get_leaderboard_rank"></block>
+      <block type="get_top_players"></block>
+      <block type="reset_leaderboard"></block>
+      <block type="delete_leaderboard"></block>
+      <block type="leaderboard_changed_event"></block>
+      <block type="display_leaderboard_gui"></block>
+      <block type="update_leaderboard_display"></block>
+      <block type="sort_leaderboard"></block>
+      <block type="export_leaderboard_data"></block>
+    </category>
+    <category name="Custom" colour="200">
+      <!-- Custom blocks will be dynamically added here -->
+    </category>
+  </xml>
+
+  <!-- Scripts -->
+  <script src="script.js"></script>
+</body>
+</html>
