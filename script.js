@@ -190,116 +190,7 @@ function organizeWorkspace() {
   }
 }
 
-function fixOutputScript() {
-  try {
-    const codeOutput = document.getElementById('codeOutput');
-    let code = codeOutput.textContent;
-    
-    if (!code || code.trim() === '-- Lua code will appear here\n-- Drag blocks from the toolbox to start coding!') {
-      showNotification('No code to fix. Generate some code first!', 'warning');
-      return;
-    }
-    
-    // Fix common issues in the generated script
-    code = fixLuaCode(code);
-    
-    codeOutput.textContent = code;
-    updateStatusIndicator('Script fixed!', 'success');
-    showNotification('Script optimized and fixed successfully!', 'success');
-  } catch (error) {
-    updateStatusIndicator('Script fix failed', 'error');
-    showNotification('Failed to fix script', 'error');
-  }
-}
 
-function fixLuaCode(code) {
-  // Remove excessive blank lines
-  code = code.replace(/\n\s*\n\s*\n/g, '\n\n');
-  
-  // Fix indentation
-  code = code.replace(/^\s+/gm, (match) => {
-    const spaces = match.length;
-    const tabs = Math.floor(spaces / 4);
-    return '    '.repeat(tabs);
-  });
-  
-  // Fix common Lua issues
-  code = code
-    // Fix variable declarations
-    .replace(/\b(local\s+)?(\w+)\s*=\s*([^;]+);/g, '$1$2 = $3')
-    // Remove unnecessary semicolons
-    .replace(/;(\s*\n)/g, '$1')
-    // Fix function calls
-    .replace(/(\w+)\(\)\s*;(\s*\n)/g, '$1()$2')
-    // Fix if statements
-    .replace(/if\s+([^then]+)\s+then\s*\n\s*([^end]+)\s*\n\s*end/g, 'if $1 then\n    $2\nend')
-    // Fix for loops
-    .replace(/for\s+([^do]+)\s+do\s*\n\s*([^end]+)\s*\n\s*end/g, 'for $1 do\n    $2\nend')
-    // Fix while loops
-    .replace(/while\s+([^do]+)\s+do\s*\n\s*([^end]+)\s*\n\s*end/g, 'while $1 do\n    $2\nend')
-    // Fix repeat loops
-    .replace(/repeat\s*\n\s*([^until]+)\s*\n\s*until\s+([^;]+);/g, 'repeat\n    $1\nuntil $2')
-    // Fix function definitions
-    .replace(/function\s+(\w+)\(\)\s*\n\s*([^end]+)\s*\n\s*end/g, 'function $1()\n    $2\nend')
-    // Fix table creation
-    .replace(/(\w+)\s*=\s*\{([^}]+)\}/g, '$1 = {$2}')
-    // Fix string concatenation
-    .replace(/"([^"]*)"\s*\.\.\s*"([^"]*)"/g, '"$1$2"')
-    // Fix math operations
-    .replace(/(\d+)\s*\+\s*(\d+)/g, (match, a, b) => parseInt(a) + parseInt(b))
-    .replace(/(\d+)\s*\*\s*(\d+)/g, (match, a, b) => parseInt(a) * parseInt(b))
-    .replace(/(\d+)\s*-\s*(\d+)/g, (match, a, b) => parseInt(a) - parseInt(b))
-    .replace(/(\d+)\s*\/\s*(\d+)/g, (match, a, b) => parseInt(a) / parseInt(b));
-  
-  // Add proper spacing around operators
-  code = code
-    .replace(/([^=!<>])=([^=])/g, '$1 = $2')
-    .replace(/([^=!<>])==([^=])/g, '$1 == $2')
-    .replace(/([^=!<>])~=([^=])/g, '$1 ~= $2')
-    .replace(/([^=!<>])<([^=])/g, '$1 < $2')
-    .replace(/([^=!<>])>([^=])/g, '$1 > $2')
-    .replace(/([^=!<>])<=([^=])/g, '$1 <= $2')
-    .replace(/([^=!<>])>=([^=])/g, '$1 >= $2');
-  
-  // Fix common Roblox-specific issues
-  code = code
-    // Fix Instance.new calls
-    .replace(/Instance\.new\("([^"]+)"\)/g, 'Instance.new("$1")')
-    // Fix Vector3.new calls
-    .replace(/Vector3\.new\(([^)]+)\)/g, 'Vector3.new($1)')
-    // Fix CFrame.new calls
-    .replace(/CFrame\.new\(([^)]+)\)/g, 'CFrame.new($1)')
-    // Fix Color3.fromRGB calls
-    .replace(/Color3\.fromRGB\(([^)]+)\)/g, 'Color3.fromRGB($1)')
-    // Fix BrickColor.new calls
-    .replace(/BrickColor\.new\(([^)]+)\)/g, 'BrickColor.new($1)');
-  
-  // Add proper error handling
-  code = code.replace(/(local\s+\w+\s*=\s*[^;]+)/g, '$1\nif not $1 then\n    warn("Failed to create object")\n    return\nend');
-  
-  // Add proper comments for sections
-  const sections = code.split('\n\n');
-  const commentedSections = sections.map((section, index) => {
-    if (section.trim().startsWith('--')) return section;
-    if (section.includes('function')) return `-- Function Definition\n${section}`;
-    if (section.includes('if') || section.includes('while') || section.includes('for')) return `-- Control Flow\n${section}`;
-    if (section.includes('Instance.new') || section.includes('workspace')) return `-- Object Creation\n${section}`;
-    if (section.includes('Connect') || section.includes('event')) return `-- Event Handling\n${section}`;
-    return section;
-  });
-  
-  code = commentedSections.join('\n\n');
-  
-  // Remove trailing whitespace
-  code = code.replace(/\s+$/gm, '');
-  
-  // Ensure proper ending
-  if (!code.endsWith('\n')) {
-    code += '\n';
-  }
-  
-  return code;
-}
 
 function formatCode() {
   try {
@@ -2896,6 +2787,42 @@ function enhanceConnectionLines() {
   });
 }
 
+// Function to enhance Blockly styling
+function enhanceBlocklyStyling() {
+  const workspace = Blockly.getMainWorkspace();
+  const blocks = workspace.getAllBlocks(false);
+  
+  blocks.forEach(block => {
+    enhanceBlock(block);
+  });
+}
+
+// Function to enhance individual blocks
+function enhanceBlock(block) {
+  if (!block || !block.svgGroup_) return;
+  
+  try {
+    const paths = block.svgGroup_.querySelectorAll('path');
+    paths.forEach(path => {
+      path.style.stroke = 'rgba(255, 255, 255, 0.15)';
+      path.style.strokeWidth = '2px';
+      path.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      path.style.filter = 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3))';
+    });
+    
+    const texts = block.svgGroup_.querySelectorAll('text, tspan');
+    texts.forEach(text => {
+      text.style.fill = '#ffffff';
+      text.style.fontFamily = 'Inter, sans-serif';
+      text.style.fontSize = '14px';
+      text.style.fontWeight = '600';
+      text.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.3)';
+    });
+  } catch (error) {
+    // Silently handle errors to prevent console spam
+  }
+}
+
 // Initialize enhanced styling
 setTimeout(() => {
   enhanceBlocklyStyling();
@@ -2990,6 +2917,18 @@ function initializeCodeResize() {
 // Initialize resize functionality after DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(initializeCodeResize, 100);
+  
+  // Initialize search functionality
+  initializeSearch();
+  
+  // Load custom blocks
+  loadCustomBlocks();
+  
+  // Initialize enhanced styling
+  setTimeout(() => {
+    enhanceBlocklyStyling();
+    enhanceConnectionLines();
+  }, 2000);
 });
 
 // Toggle code panel between normal and maximized
@@ -3030,22 +2969,32 @@ function toggleCodePanel() {
 
 // Smart code analysis functions
 function analyzeCode() {
-  const code = document.getElementById('smartLuaCode').value.trim();
+  const codeElement = document.getElementById('smartLuaCode');
+  if (!codeElement) {
+    showNotification('Code input element not found', 'error');
+    return;
+  }
+  
+  const code = codeElement.value.trim();
   if (!code) {
     showNotification('Please enter some Lua code to analyze', 'error');
     return;
   }
   
   const analyzeBtn = document.querySelector('.analyze-btn');
-  analyzeBtn.classList.add('analyzing');
-  analyzeBtn.innerHTML = '<span class="button-icon">⏳</span>Analyzing...';
+  if (analyzeBtn) {
+    analyzeBtn.classList.add('analyzing');
+    analyzeBtn.innerHTML = '<span class="button-icon">⏳</span>Analyzing...';
+  }
   
   // Simulate analysis delay for better UX
   setTimeout(() => {
     const analysis = performSmartAnalysis(code);
     displayAnalysisResults(analysis);
-    analyzeBtn.classList.remove('analyzing');
-    analyzeBtn.innerHTML = '<span class="button-icon">🔍</span>Analyze Code';
+    if (analyzeBtn) {
+      analyzeBtn.classList.remove('analyzing');
+      analyzeBtn.innerHTML = '<span class="button-icon">🔍</span>Analyze Code';
+    }
   }, 1000);
 }
 
@@ -3210,47 +3159,60 @@ function processCodeWithPlaceholders(code, inputs) {
 }
 
 function displayAnalysisResults(analysis) {
-  // Update analysis results
-  document.getElementById('suggestedCategory').textContent = analysis.category;
-  document.getElementById('suggestedType').textContent = analysis.type === 'statement' ? 'Statement (No output)' : 'Value (With output)';
-  document.getElementById('suggestedText').textContent = analysis.displayText;
-  document.getElementById('suggestedColor').innerHTML = `<span style="color: ${analysis.color}">${analysis.color}</span>`;
+  // Update analysis results with null checks
+  const suggestedCategory = document.getElementById('suggestedCategory');
+  const suggestedType = document.getElementById('suggestedType');
+  const suggestedText = document.getElementById('suggestedText');
+  const suggestedColor = document.getElementById('suggestedColor');
+  
+  if (suggestedCategory) suggestedCategory.textContent = analysis.category;
+  if (suggestedType) suggestedType.textContent = analysis.type === 'statement' ? 'Statement (No output)' : 'Value (With output)';
+  if (suggestedText) suggestedText.textContent = analysis.displayText;
+  if (suggestedColor) suggestedColor.innerHTML = `<span style="color: ${analysis.color}">${analysis.color}</span>`;
   
   // Update advanced options
-  document.getElementById('blockColor').value = analysis.color;
-  document.getElementById('blockCategory').value = analysis.category;
-  document.getElementById('blockType').value = analysis.type;
+  const blockColor = document.getElementById('blockColor');
+  const blockCategory = document.getElementById('blockCategory');
+  const blockType = document.getElementById('blockType');
+  
+  if (blockColor) blockColor.value = analysis.color;
+  if (blockCategory) blockCategory.value = analysis.category;
+  if (blockType) blockType.value = analysis.type;
   
   // Display detected inputs
   const inputsContainer = document.getElementById('detectedInputsList');
-  inputsContainer.innerHTML = '';
-  
-  if (analysis.inputs.length === 0) {
-    inputsContainer.innerHTML = '<p style="color: rgba(255,255,255,0.6); text-align: center; padding: 10px;">No inputs detected</p>';
-  } else {
-    analysis.inputs.forEach((input, index) => {
-      const inputItem = document.createElement('div');
-      inputItem.className = 'detected-input-item';
-      inputItem.innerHTML = `
-        <div class="detected-input-info">
-          <div class="detected-input-name">${input.name}</div>
-          <div class="detected-input-type">${input.type.replace('_', ' ')}</div>
-        </div>
-        <div class="detected-input-suggestion">Input ${index + 1}</div>
-      `;
-      inputsContainer.appendChild(inputItem);
-    });
+  if (inputsContainer) {
+    inputsContainer.innerHTML = '';
+    
+    if (analysis.inputs.length === 0) {
+      inputsContainer.innerHTML = '<p style="color: rgba(255,255,255,0.6); text-align: center; padding: 10px;">No inputs detected</p>';
+    } else {
+      analysis.inputs.forEach((input, index) => {
+        const inputItem = document.createElement('div');
+        inputItem.className = 'detected-input-item';
+        inputItem.innerHTML = `
+          <div class="detected-input-info">
+            <div class="detected-input-name">${input.name}</div>
+            <div class="detected-input-type">${input.type.replace('_', ' ')}</div>
+          </div>
+          <div class="detected-input-suggestion">Input ${index + 1}</div>
+        `;
+        inputsContainer.appendChild(inputItem);
+      });
+    }
   }
   
   // Display code preview
-  document.getElementById('codePreview').textContent = analysis.processedCode;
+  const codePreview = document.getElementById('codePreview');
+  if (codePreview) codePreview.textContent = analysis.processedCode;
   
   // Show results
-  document.getElementById('analysisResults').style.display = 'block';
+  const analysisResults = document.getElementById('analysisResults');
+  if (analysisResults) analysisResults.style.display = 'block';
   
   // Auto-generate block name if empty
   const blockNameInput = document.getElementById('blockName');
-  if (!blockNameInput.value.trim()) {
+  if (blockNameInput && !blockNameInput.value.trim()) {
     const suggestedName = generateBlockName(analysis.displayText, analysis.category);
     blockNameInput.value = suggestedName;
   }
@@ -3279,6 +3241,8 @@ function toggleAdvancedOptions() {
   const advancedOptions = document.querySelector('.advanced-options');
   const toggleBtn = document.querySelector('.modal-button');
   
+  if (!advancedOptions || !toggleBtn) return;
+  
   if (advancedOptions.style.display === 'none') {
     advancedOptions.style.display = 'block';
     toggleBtn.textContent = 'Hide Advanced Options';
@@ -3302,7 +3266,7 @@ function createSmartCustomBlock() {
   
   // Use advanced options if available
   const advancedOptions = document.querySelector('.advanced-options');
-  if (advancedOptions.style.display !== 'none') {
+  if (advancedOptions && advancedOptions.style.display !== 'none') {
     analysis.color = document.getElementById('blockColor').value;
     analysis.category = document.getElementById('blockCategory').value;
     analysis.type = document.getElementById('blockType').value;
@@ -3345,20 +3309,45 @@ function createSmartCustomBlock() {
   updateStatusIndicator('Smart block added', 'success');
 }
 
+// Function to close custom block modal
+function closeCustomBlockModal() {
+  const modal = document.getElementById('customBlockModal');
+  if (modal) {
+    modal.classList.remove('show');
+  }
+}
+
+// Function to open custom block modal
+function openCustomBlockModal() {
+  const modal = document.getElementById('customBlockModal');
+  if (modal) {
+    modal.classList.add('show');
+  }
+}
+
 // Update the clear form function for the new interface
 function clearCustomBlockForm() {
-  document.getElementById('blockName').value = '';
-  document.getElementById('smartLuaCode').value = '';
-  document.getElementById('blockColor').value = '#667eea';
-  document.getElementById('blockCategory').value = 'Custom';
-  document.getElementById('blockType').value = 'statement';
+  const blockName = document.getElementById('blockName');
+  const smartLuaCode = document.getElementById('smartLuaCode');
+  const blockColor = document.getElementById('blockColor');
+  const blockCategory = document.getElementById('blockCategory');
+  const blockType = document.getElementById('blockType');
+  const analysisResults = document.getElementById('analysisResults');
+  const advancedOptions = document.querySelector('.advanced-options');
+  const modalButton = document.querySelector('.modal-button');
+  
+  if (blockName) blockName.value = '';
+  if (smartLuaCode) smartLuaCode.value = '';
+  if (blockColor) blockColor.value = '#667eea';
+  if (blockCategory) blockCategory.value = 'Custom';
+  if (blockType) blockType.value = 'statement';
   
   // Hide analysis results
-  document.getElementById('analysisResults').style.display = 'none';
+  if (analysisResults) analysisResults.style.display = 'none';
   
   // Hide advanced options
-  document.querySelector('.advanced-options').style.display = 'none';
-  document.querySelector('.modal-button').textContent = 'Advanced Options';
+  if (advancedOptions) advancedOptions.style.display = 'none';
+  if (modalButton) modalButton.textContent = 'Advanced Options';
 }
 
 // Smart Script Helper Features
@@ -3374,8 +3363,10 @@ let selectedHistoryItem = null;
 // Initialize smart features
 document.addEventListener('DOMContentLoaded', function() {
   // Add event listeners for new buttons
-  document.getElementById('validateScriptButton').addEventListener('click', validateScript);
-  document.getElementById('undoButton').addEventListener('click', showUndoHistoryModal);
+  const undoButton = document.getElementById('undoButton');
+  if (undoButton) {
+    undoButton.addEventListener('click', showUndoHistoryModal);
+  }
   
   // Initialize workspace history
   saveWorkspaceState();
@@ -3383,128 +3374,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-// Validate Script Functions
-function validateScript() {
-  const code = document.getElementById('codeOutput').textContent;
-  const results = performScriptValidation(code);
-  displayValidationResults(results);
-  document.getElementById('validateScriptModal').classList.add('show');
-}
 
-function closeValidateScriptModal() {
-  document.getElementById('validateScriptModal').classList.remove('show');
-}
 
-function performScriptValidation(code) {
-  const results = [];
-  
-  // Check for common Lua syntax issues
-  const lines = code.split('\n');
-  
-  lines.forEach((line, index) => {
-    const lineNum = index + 1;
-    
-    // Check for missing 'end' statements
-    if (line.includes('if') && line.includes('then') && !line.includes('end')) {
-      // Look ahead for 'end'
-      let hasEnd = false;
-      for (let i = index + 1; i < lines.length; i++) {
-        if (lines[i].trim() === 'end') {
-          hasEnd = true;
-          break;
-        }
-      }
-      if (!hasEnd) {
-        results.push({
-          type: 'error',
-          title: 'Missing end statement',
-          message: 'If statement is missing its corresponding end statement',
-          line: lineNum,
-          suggestion: 'Add "end" after the if block'
-        });
-      }
-    }
-    
-    // Check for undefined variables
-    if (line.includes('local') && line.includes('=')) {
-      const varMatch = line.match(/local\s+(\w+)/);
-      if (varMatch) {
-        const varName = varMatch[1];
-        // Check if variable is used later
-        let isUsed = false;
-        for (let i = index + 1; i < lines.length; i++) {
-          if (lines[i].includes(varName) && !lines[i].includes('local')) {
-            isUsed = true;
-            break;
-          }
-        }
-        if (!isUsed) {
-          results.push({
-            type: 'warning',
-            title: 'Unused variable',
-            message: `Variable "${varName}" is declared but never used`,
-            line: lineNum,
-            suggestion: 'Remove the variable declaration or use it in your code'
-          });
-        }
-      }
-    }
-    
-    // Check for common Roblox issues
-    if (line.includes('Instance.new') && !line.includes('Parent')) {
-      results.push({
-        type: 'warning',
-        title: 'Missing Parent assignment',
-        message: 'Instance created but not assigned to a parent',
-        line: lineNum,
-        suggestion: 'Add ".Parent = workspace" or appropriate parent'
-      });
-    }
-  });
-  
-  // Add success message if no issues found
-  if (results.length === 0) {
-    results.push({
-      type: 'success',
-      title: 'No issues found!',
-      message: 'Your script looks good and should run without problems',
-      line: null,
-      suggestion: null
-    });
-  }
-  
-  return results;
-}
 
-function displayValidationResults(results) {
-  const container = document.getElementById('validationResults');
-  container.innerHTML = '';
-  
-  results.forEach(result => {
-    const item = document.createElement('div');
-    item.className = 'validation-item';
-    
-    const icon = result.type === 'error' ? '❌' : result.type === 'warning' ? '⚠️' : result.type === 'success' ? '✅' : 'ℹ️';
-    
-    item.innerHTML = `
-      <div class="validation-icon ${result.type}">${icon}</div>
-      <div class="validation-content">
-        <div class="validation-title">${result.title}</div>
-        <div class="validation-message">${result.message}</div>
-        ${result.line ? `<div class="validation-line">Line ${result.line}</div>` : ''}
-        ${result.suggestion ? `<div class="validation-suggestion">💡 ${result.suggestion}</div>` : ''}
-      </div>
-    `;
-    
-    container.appendChild(item);
-  });
-}
 
-function applyValidationFixes() {
-  // This would implement automatic fixes for common issues
-  showNotification('Automatic fixes applied!', 'success');
-  closeValidateScriptModal();
-}
+
 
 
 
@@ -3618,8 +3492,15 @@ workspace.addChangeListener((event) => {
 
 // Continuous styling application
 function applyContinuousStyling() {
-  const blocks = workspace.getAllBlocks(false);
-  blocks.forEach(enhanceBlock);
+  try {
+    const workspace = Blockly.getMainWorkspace();
+    if (!workspace) return;
+    
+    const blocks = workspace.getAllBlocks(false);
+    blocks.forEach(enhanceBlock);
+  } catch (error) {
+    // Silently handle errors to prevent console spam
+  }
 }
 
 // Run continuous styling every 2 seconds
@@ -3659,9 +3540,716 @@ function testWarningPanel() {
   showScriptTypeWarnings(testWarnings, testScriptType);
 }
 
+// Function to close script type warnings
+function closeScriptTypeWarnings() {
+  const warningPanel = document.getElementById('scriptTypeWarningPanel');
+  if (warningPanel) {
+    warningPanel.classList.remove('show');
+  }
+}
+
+// Function to show script type warnings
+function showScriptTypeWarnings(warnings, scriptType) {
+  const warningPanel = document.getElementById('scriptTypeWarningPanel');
+  if (!warningPanel) return;
+  
+  const warningsList = warningPanel.querySelector('.warnings-list');
+  if (warningsList) {
+    warningsList.innerHTML = warnings.map(warning => `
+      <div class="warning-item ${warning.severity}">
+        <div class="warning-icon">${warning.severity === 'error' ? '❌' : warning.severity === 'warning' ? '⚠️' : 'ℹ️'}</div>
+        <div class="warning-content">
+          <div class="warning-message">${warning.message}</div>
+          <div class="warning-suggestion">${warning.suggestion}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  warningPanel.classList.add('show');
+}
+
+// Function to detect script type and warn
+function detectScriptTypeAndWarn(code) {
+  const warnings = [];
+  let scriptType = { isServer: false, isClient: false, confidence: 0 };
+  
+  // Simple detection logic
+  if (code.includes('game.Players.LocalPlayer')) {
+    scriptType.isClient = true;
+    scriptType.confidence += 3;
+  }
+  
+  if (code.includes('FireServer') || code.includes('OnServerEvent')) {
+    scriptType.isServer = true;
+    scriptType.confidence += 2;
+  }
+  
+  // Add warnings based on detection
+  if (scriptType.isClient && code.includes('FireServer')) {
+    warnings.push({
+      type: 'client',
+      message: 'Client script trying to fire server events',
+      severity: 'warning',
+      suggestion: 'Use RemoteEvents for client-server communication'
+    });
+  }
+  
+  return { warnings, scriptType };
+}
+
 // Add this to the global scope so you can test it
 window.testWarningPanel = testWarningPanel;
 window.closeScriptTypeWarnings = closeScriptTypeWarnings;
 
+// Search functionality
+let searchTimeout;
+let allBlocks = [];
 
+// Initialize search functionality
+function initializeSearch() {
+  const searchInput = document.getElementById('searchInput');
+  
+  if (!searchInput) return; // Guard against missing element
+  
+  // Add event listeners
+  searchInput.addEventListener('input', handleSearchInput);
+  searchInput.addEventListener('keydown', handleSearchKeydown);
+  
+  // Populate all blocks data
+  populateAllBlocks();
+}
 
+// Handle search input
+function handleSearchInput(event) {
+  const query = event.target.value.trim();
+  
+  // Clear previous timeout
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+  
+  if (query.length === 0) {
+    hideSearchResults();
+    return;
+  }
+  
+  // Debounce search
+  searchTimeout = setTimeout(() => {
+    performSearch(query);
+  }, 300);
+}
+
+// Handle search keydown
+function handleSearchKeydown(event) {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    performSearch();
+  } else if (event.key === 'Escape') {
+    hideSearchResults();
+    event.target.blur();
+  }
+}
+
+// Perform search
+function performSearch(query = null) {
+  const searchInput = document.getElementById('searchInput');
+  const searchResults = document.getElementById('searchResults');
+  
+  if (!searchInput || !searchResults) return;
+  
+  if (!query) {
+    query = searchInput.value.trim();
+  }
+  
+  if (query.length === 0) {
+    hideSearchResults();
+    return;
+  }
+  
+  const results = searchBlocks(query);
+  displaySearchResults(results);
+}
+
+// Search blocks
+function searchBlocks(query) {
+  const lowerQuery = query.toLowerCase();
+  const results = [];
+  
+  if (!allBlocks || allBlocks.length === 0) {
+    populateAllBlocks(); // Ensure blocks are populated
+  }
+  
+  allBlocks.forEach(block => {
+    const score = calculateSearchScore(block, lowerQuery);
+    if (score > 0) {
+      results.push({ ...block, score });
+    }
+  });
+  
+  // Sort by relevance score
+  results.sort((a, b) => b.score - a.score);
+  
+  return results.slice(0, 10); // Limit to 10 results
+}
+
+// Calculate search score
+function calculateSearchScore(block, query) {
+  let score = 0;
+  
+  // Exact matches get highest score
+  if (block.title.toLowerCase().includes(query)) {
+    score += 100;
+  }
+  if (block.category.toLowerCase().includes(query)) {
+    score += 50;
+  }
+  if (block.description.toLowerCase().includes(query)) {
+    score += 30;
+  }
+  
+  // Partial matches
+  const words = query.split(' ');
+  words.forEach(word => {
+    if (block.title.toLowerCase().includes(word)) {
+      score += 20;
+    }
+    if (block.category.toLowerCase().includes(word)) {
+      score += 10;
+    }
+    if (block.description.toLowerCase().includes(word)) {
+      score += 5;
+    }
+  });
+  
+  return score;
+}
+
+// Display search results
+function displaySearchResults(results) {
+  const searchResults = document.getElementById('searchResults');
+  
+  if (!searchResults) return;
+  
+  if (results.length === 0) {
+    searchResults.innerHTML = '<div class="no-search-results">No blocks found matching your search.</div>';
+  } else {
+    searchResults.innerHTML = results.map(block => `
+      <div class="search-result-item" onclick="addBlockToWorkspace('${block.type}')">
+        <div class="search-result-icon">${block.icon}</div>
+        <div class="search-result-content">
+          <div class="search-result-title">${block.title}</div>
+          <div class="search-result-category">${block.category}</div>
+          <div class="search-result-description">${block.description}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  searchResults.classList.add('show');
+}
+
+// Hide search results
+function hideSearchResults() {
+  const searchResults = document.getElementById('searchResults');
+  if (searchResults) {
+    searchResults.classList.remove('show');
+  }
+}
+
+// Add block to workspace
+function addBlockToWorkspace(blockType) {
+  try {
+    const workspace = Blockly.getMainWorkspace();
+    if (!workspace) {
+      showNotification('Workspace not available', 'error');
+      return;
+    }
+    
+    const block = workspace.newBlock(blockType);
+    block.initSvg();
+    block.render();
+    
+    // Position the block in the center of the workspace
+    const metrics = workspace.getMetrics();
+    const x = metrics.viewWidth / 2;
+    const y = metrics.viewHeight / 2;
+    block.moveBy(x, y);
+    
+    // Clear search
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    hideSearchResults();
+    
+    // Generate code
+    generateCode();
+    
+    showNotification(`Added ${blockType} block to workspace!`, 'success');
+  } catch (error) {
+    showNotification(`Failed to add block: ${error.message}`, 'error');
+  }
+}
+
+// Custom blocks storage
+let customBlocks = [];
+
+// Load custom blocks from localStorage
+function loadCustomBlocks() {
+  try {
+    const saved = localStorage.getItem('customBlocks');
+    if (saved) {
+      customBlocks = JSON.parse(saved);
+    }
+  } catch (error) {
+    console.error('Failed to load custom blocks:', error);
+    customBlocks = [];
+  }
+}
+
+// Save custom blocks to localStorage
+function saveCustomBlocks() {
+  try {
+    localStorage.setItem('customBlocks', JSON.stringify(customBlocks));
+  } catch (error) {
+    console.error('Failed to save custom blocks:', error);
+  }
+}
+
+// Register a custom block
+function registerCustomBlock(customBlock) {
+  // This would register the block with Blockly
+  // For now, we'll just store it
+  console.log('Custom block registered:', customBlock.name);
+}
+
+// Add custom block to toolbox
+function addCustomBlockToToolbox(customBlock) {
+  // This would add the block to the toolbox
+  // For now, we'll just log it
+  console.log('Custom block added to toolbox:', customBlock.name);
+}
+
+// Populate all blocks data
+function populateAllBlocks() {
+  allBlocks = [
+    // Environment blocks
+    {
+      type: 'spawn_part',
+      title: 'Spawn Part',
+      category: 'Environment',
+      description: 'Create a new part in the workspace',
+      icon: '🧱'
+    },
+    {
+      type: 'rotate_part',
+      title: 'Rotate Part',
+      category: 'Environment',
+      description: 'Rotate a part by specified angles',
+      icon: '🔄'
+    },
+    {
+      type: 'set_part_position',
+      title: 'Set Part Position',
+      category: 'Environment',
+      description: 'Move a part to a specific position',
+      icon: '📍'
+    },
+    {
+      type: 'set_part_color',
+      title: 'Set Part Color',
+      category: 'Environment',
+      description: 'Change the color of a part',
+      icon: '🎨'
+    },
+    {
+      type: 'create_tween',
+      title: 'Create Tween',
+      category: 'Environment',
+      description: 'Create smooth animations for parts',
+      icon: '🎬'
+    },
+    
+    // Events blocks
+    {
+      type: 'event_touched',
+      title: 'Part Touched',
+      category: 'Events',
+      description: 'Trigger when a part is touched',
+      icon: '👆'
+    },
+    {
+      type: 'event_clickdetector',
+      title: 'Part Clicked',
+      category: 'Events',
+      description: 'Trigger when a part is clicked',
+      icon: '🖱️'
+    },
+    {
+      type: 'event_player_added',
+      title: 'Player Added',
+      category: 'Events',
+      description: 'Trigger when a player joins',
+      icon: '👤'
+    },
+    {
+      type: 'event_key_pressed',
+      title: 'Key Pressed',
+      category: 'Events',
+      description: 'Trigger when a key is pressed',
+      icon: '⌨️'
+    },
+    
+    // Logic blocks
+    {
+      type: 'controls_if',
+      title: 'If Statement',
+      category: 'Logic',
+      description: 'Execute code conditionally',
+      icon: '❓'
+    },
+    {
+      type: 'logic_compare',
+      title: 'Compare Values',
+      category: 'Logic',
+      description: 'Compare two values',
+      icon: '⚖️'
+    },
+    {
+      type: 'logic_and',
+      title: 'AND Logic',
+      category: 'Logic',
+      description: 'Combine conditions with AND',
+      icon: '🔗'
+    },
+    {
+      type: 'logic_or',
+      title: 'OR Logic',
+      category: 'Logic',
+      description: 'Combine conditions with OR',
+      icon: '🔗'
+    },
+    
+    // Control blocks
+    {
+      type: 'wait',
+      title: 'Wait',
+      category: 'Control',
+      description: 'Pause execution for a specified time',
+      icon: '⏱️'
+    },
+    
+    // Loop blocks
+    {
+      type: 'controls_repeat_ext',
+      title: 'Repeat',
+      category: 'Loops',
+      description: 'Repeat code a specified number of times',
+      icon: '🔄'
+    },
+    {
+      type: 'controls_whileUntil',
+      title: 'While Loop',
+      category: 'Loops',
+      description: 'Repeat code while a condition is true',
+      icon: '🔄'
+    },
+    {
+      type: 'controls_for',
+      title: 'For Loop',
+      category: 'Loops',
+      description: 'Loop through a range of values',
+      icon: '🔄'
+    },
+    
+    // Math blocks
+    {
+      type: 'math_number',
+      title: 'Number',
+      category: 'Math',
+      description: 'A numeric value',
+      icon: '🔢'
+    },
+    {
+      type: 'math_arithmetic',
+      title: 'Math Operation',
+      category: 'Math',
+      description: 'Perform mathematical operations',
+      icon: '🧮'
+    },
+    {
+      type: 'math_random_range',
+      title: 'Random Number',
+      category: 'Math',
+      description: 'Generate a random number',
+      icon: '🎲'
+    },
+    
+    // Text blocks
+    {
+      type: 'text_input',
+      title: 'Text Input',
+      category: 'Text',
+      description: 'A text string',
+      icon: '📝'
+    },
+    {
+      type: 'print_statement',
+      title: 'Print',
+      category: 'Text',
+      description: 'Print text to output',
+      icon: '🖨️'
+    },
+    
+    // Player blocks
+    {
+      type: 'get_player',
+      title: 'Get Player',
+      category: 'Player',
+      description: 'Get the local player',
+      icon: '👤'
+    },
+    {
+      type: 'set_player_walkspeed',
+      title: 'Set Walk Speed',
+      category: 'Player',
+      description: 'Change player walking speed',
+      icon: '🏃'
+    },
+    {
+      type: 'set_player_health',
+      title: 'Set Health',
+      category: 'Player',
+      description: 'Set player health',
+      icon: '❤️'
+    },
+    {
+      type: 'teleport_player',
+      title: 'Teleport Player',
+      category: 'Player',
+      description: 'Move player to a location',
+      icon: '🚀'
+    },
+    
+    // Table blocks
+    {
+      type: 'create_table',
+      title: 'Create Table',
+      category: 'Tables',
+      description: 'Create a new table',
+      icon: '📋'
+    },
+    {
+      type: 'get_table_value',
+      title: 'Get Table Value',
+      category: 'Tables',
+      description: 'Get a value from a table',
+      icon: '📖'
+    },
+    
+    // Remote Events blocks
+    {
+      type: 'fire_remote_event',
+      title: 'Fire Remote Event',
+      category: 'Remote Events',
+      description: 'Send data to server',
+      icon: '📡'
+    },
+    {
+      type: 'on_remote_event_received',
+      title: 'On Remote Event',
+      category: 'Remote Events',
+      description: 'Handle incoming remote events',
+      icon: '📡'
+    },
+    
+    // Leaderboard blocks
+    {
+      type: 'create_leaderboard',
+      title: 'Create Leaderboard',
+      category: 'Leaderboards',
+      description: 'Create a new leaderboard',
+      icon: '🏆'
+    },
+    {
+      type: 'set_leaderboard_value',
+      title: 'Set Leaderboard Value',
+      category: 'Leaderboards',
+      description: 'Set a player\'s score',
+      icon: '📊'
+    },
+    {
+      type: 'get_leaderboard_value',
+      title: 'Get Leaderboard Value',
+      category: 'Leaderboards',
+      description: 'Get a player\'s score',
+      icon: '📊'
+    }
+  ];
+}
+
+// --- Site State Logic ---
+const siteLockoutDiv = document.getElementById('site-lockout');
+const appContainer = document.querySelector('.container');
+const copyrightFooter = document.querySelector('.copyright-footer');
+const statusIndicator = document.querySelector('.status-indicator');
+const statusRefreshBtn = document.getElementById('statusRefreshBtn');
+
+let siteStatus = 'Ready';
+let siteOwner = 'zanxv213';
+let siteStatusDescriptions = {
+  Ready: 'The site is fully operational. All features are available.',
+  Maintenance: 'The site is under maintenance. Features are temporarily unavailable.',
+  Suspended: 'The site is suspended. No actions can be performed at this time.',
+  Degraded: 'The site is experiencing issues. Some features may not work as expected.',
+  Updating: 'The site is being updated. You may experience brief interruptions.',
+  Beta: 'The site is in beta. Features may change or break unexpectedly.'
+};
+let lastStatusChecked = null;
+
+const statusColors = {
+  Ready: '#27c93f',
+  Maintenance: '#ffbd2e',
+  Suspended: '#ff5f57',
+  Degraded: '#ff9800',
+  Updating: '#2196f3',
+  Beta: '#9c27b0',
+  Unknown: '#bdbdbd'
+};
+
+const statusIcons = {
+  Ready: '🟢',
+  Maintenance: '🛠️',
+  Suspended: '🔒',
+  Degraded: '🟠',
+  Updating: '🔵',
+  Beta: '🧪',
+  Unknown: '❔'
+};
+const statusBadgeStyles = {
+  Maintenance: { bg: '#2e2a1e', color: '#ffbd2e', glow: '#ffbd2e88' },
+  Suspended:   { bg: '#2e1e1e', color: '#ff5f57', glow: '#ff5f5788' },
+  Degraded:    { bg: '#2e261e', color: '#ff9800', glow: '#ff980088' },
+  Updating:    { bg: '#1e2632', color: '#2196f3', glow: '#2196f388' },
+  Beta:        { bg: '#241e2e', color: '#9c27b0', glow: '#9c27b088' },
+  Unknown:     { bg: '#222', color: '#bdbdbd', glow: '#bdbdbd88' }
+};
+
+function updateSidebarStatus() {
+  if (!statusIndicator) return;
+  // Only update .status-text and .status-dot
+  const icon = statusIcons[siteStatus] || statusIcons.Unknown;
+  statusIndicator.querySelector('.status-text').textContent = siteStatus;
+  // Update dot color
+  const dot = statusIndicator.querySelector('.status-dot');
+  if (dot) dot.style.background = statusColors[siteStatus] || statusColors.Unknown;
+  // Update description
+  let desc = statusIndicator.querySelector('.status-description');
+  if (!desc) {
+    desc = document.createElement('div');
+    desc.className = 'status-description';
+    statusIndicator.appendChild(desc);
+  }
+  desc.textContent = siteStatusDescriptions[siteStatus] || '';
+  // Update last updated date
+  if (statusLastUpdated && lastStatusChecked) {
+    const date = lastStatusChecked;
+    const formatted = `(${date.getMonth()+1}/${date.getDate()}/${date.getFullYear()})`;
+    statusLastUpdated.textContent = `Last updated: ${formatted}`;
+    statusLastUpdated.style.display = 'block';
+  } else if (statusLastUpdated) {
+    statusLastUpdated.style.display = 'none';
+  }
+}
+
+if (statusRefreshBtn) {
+  statusRefreshBtn.addEventListener('click', () => {
+    fetchSiteStatusAndUpdate(true);
+    // Animate icon
+    const icon = statusRefreshBtn.querySelector('.status-refresh-icon');
+    if (icon) {
+      icon.style.animation = 'statusRefreshSpin 0.7s linear';
+      setTimeout(() => { icon.style.animation = ''; }, 700);
+    }
+  });
+}
+
+async function fetchSiteStatusAndUpdate(force = false) {
+  try {
+    const res = await fetch('status.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Status fetch failed');
+    const data = await res.json();
+    siteStatus = data.status;
+    siteOwner = data.owner || 'the site owner';
+    if (data.descriptions) siteStatusDescriptions = data.descriptions;
+    lastStatusChecked = new Date(); // Always update lastStatusChecked
+    updateSidebarStatus();
+    if (siteStatus === 'Maintenance' || siteStatus === 'Suspended') {
+      showLockoutPanel(siteStatus, siteOwner, siteStatusDescriptions[siteStatus]);
+    } else {
+      hideLockoutPanel();
+    }
+  } catch (e) {
+    lastStatusChecked = new Date(); // Also update on error
+    siteStatus = 'Unknown';
+    updateSidebarStatus();
+    showLockoutPanel('Unknown', '', 'Could not check site status. Please try again later.');
+  }
+}
+
+// Block actions if not Ready
+function blockIfNotReady() {
+  return siteStatus === 'Maintenance' || siteStatus === 'Suspended';
+}
+
+// Patch all main actions to check status
+const origGenerateCode = window.generateCode;
+window.generateCode = function() { if (!blockIfNotReady()) origGenerateCode.apply(this, arguments); };
+const origSaveWorkspace = window.saveWorkspace;
+window.saveWorkspace = function() { if (!blockIfNotReady()) origSaveWorkspace.apply(this, arguments); };
+const origLoadWorkspace = window.loadWorkspace;
+window.loadWorkspace = function() { if (!blockIfNotReady()) origLoadWorkspace.apply(this, arguments); };
+const origClearWorkspace = window.clearWorkspace;
+window.clearWorkspace = function() { if (!blockIfNotReady()) origClearWorkspace.apply(this, arguments); };
+const origOrganizeWorkspace = window.organizeWorkspace;
+window.organizeWorkspace = function() { if (!blockIfNotReady()) origOrganizeWorkspace.apply(this, arguments); };
+const origFormatCode = window.formatCode;
+window.formatCode = function() { if (!blockIfNotReady()) origFormatCode.apply(this, arguments); };
+
+// On load, fetch status and poll every 60s
+window.addEventListener('DOMContentLoaded', () => {
+  fetchSiteStatusAndUpdate();
+  setInterval(fetchSiteStatusAndUpdate, 60000);
+});
+
+function showLockoutPanel(status, owner, description) {
+  if (appContainer) appContainer.style.display = 'none';
+  if (copyrightFooter) copyrightFooter.style.display = 'none';
+  if (siteLockoutDiv) {
+    siteLockoutDiv.className = 'site-lockout';
+    siteLockoutDiv.style.display = 'flex';
+    let icon = status === 'Maintenance' ? '<span class="animated-wrench">🔧</span>' : status === 'Suspended' ? '🔒' : '❌';
+    let title = status === 'Maintenance' ? `<span class="gradient-title">We\'re Improving Things</span>` : status === 'Suspended' ? '<span class="gradient-title">Site Access Restricted</span>' : '<span class="gradient-title">Site Unavailable</span>';
+    let apology = owner ? `<div class=\"signature-apology\"><span>We apologize for the inconvenience.</span><hr><span class=\"signature-owner\">— ${owner}</span></div>` : '<div class=\"signature-apology\"><span>We apologize for the inconvenience.</span></div>';
+    siteLockoutDiv.innerHTML = `
+      <div class=\"lockout-bg-anim\"></div>
+      <div class=\"glass-lockout-card\">
+        <div class=\"lockout-icon-row\">${icon}</div>
+        <h1 class=\"lockout-title\">${title}</h1>
+        <div class=\"lockout-status-badge\">${status}</div>
+        <div class=\"lockout-desc\">${description || ''}</div>
+        ${apology}
+      </div>
+    `;
+  }
+}
+
+function hideLockoutPanel() {
+  if (appContainer) appContainer.style.display = '';
+  if (copyrightFooter) copyrightFooter.style.display = '';
+  if (siteLockoutDiv) {
+    siteLockoutDiv.style.display = 'none';
+    siteLockoutDiv.innerHTML = '';
+  }
+}
