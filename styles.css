@@ -1709,9 +1709,6 @@ html, body {
   }
 }
 
-.container {
-  animation: fadeInUp 0.6s ease-out;
-}
 
 /* Hover effects for interactive elements */
 .toolbar-button, #organizeButton, .action-button {
@@ -3065,6 +3062,122 @@ html, body {
     font-size: 0.95rem;
     padding: 6px 14px;
   }
+}
+
+/* --- GitHub Login Modal Styles --- */
+.github-login-btn {
+  background: #222;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 8px #0004;
+  margin-top: 12px;
+}
+.github-login-btn:hover {
+  background: #333;
+  box-shadow: 0 4px 16px #2228;
+}
+#loginModal.modal {
+  display: none;
+  position: fixed;
+  z-index: 10001;
+  left: 0; top: 0; right: 0; bottom: 0;
+  background: rgba(10, 10, 20, 0.85);
+  backdrop-filter: blur(10px);
+  align-items: center;
+  justify-content: center;
+}
+#loginModal.show {
+  display: flex;
+}
+#loginModal .modal-content {
+  background: linear-gradient(135deg, #181924 0%, #23243a 100%);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px #000b;
+  padding: 0;
+  overflow: hidden;
+}
+#loginModal .modal-header {
+  padding: 18px 24px 0 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#loginModal .modal-header h2 {
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+}
+#loginModal .modal-close {
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.5rem;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0 8px;
+  transition: background 0.2s;
+}
+#loginModal .modal-close:hover {
+  background: #2223;
+  color: #fff;
+}
+#loginModal .modal-body {
+  padding: 24px 24px 28px 24px;
+}
+
+#userInfoBar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, #181924 0%, #23243a 100%);
+  color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px #0008;
+  padding: 4px 32px 4px 16px;
+  width: 700px;
+  font-size: 0.93rem;
+  font-weight: 500;
+  border: 1px solid #23243a;
+  z-index: 10010;
+  transition: box-shadow 0.2s;
+}
+#userInfoBar .user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #667eea;
+  box-shadow: 0 1px 4px #667eea33;
+}
+#userInfoBar .user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+#userInfoBar .user-name {
+  font-weight: 700;
+  color: #ffbd2e;
+  font-size: 0.98em;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+#userInfoBar .user-email {
+  font-size: 0.85em;
+  color: #b0b6c8;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 
