@@ -4444,3 +4444,139 @@ function switchToAccount(uid) {
     }, 500);
   });
 }
+
+// --- Lua End Reconstructor ---
+function reconstructLuaEnds(code) {
+  // Remove all 'end' and 'end)' statements
+  let lines = code.split('\n');
+  let cleanedLines = [];
+  for (let line of lines) {
+    let trimmed = line.trim();
+    // Remove lines that are just 'end' or 'end)' or 'end,'
+    if (/^end\)?[,;]?$/i.test(trimmed)) continue;
+    // Remove trailing 'end' or 'end)' at the end of a line
+    line = line.replace(/\bend\)?[,;]?\s*$/i, '');
+    cleanedLines.push(line);
+  }
+
+  // Now reconstruct ends
+  const blockOpeners = [
+    { regex: /^\s*if\b.*then\b/i, type: 'if' },
+    { regex: /^\s*for\b.*do\b/i, type: 'for' },
+    { regex: /^\s*while\b.*do\b/i, type: 'while' },
+    { regex: /^\s*function\b/i, type: 'function' },
+    { regex: /^\s*repeat\b/i, type: 'repeat' },
+    { regex: /^\s*do\b/i, type: 'do' },
+    { regex: /^\s*else\b/i, type: 'else' },
+    { regex: /^\s*elseif\b.*then\b/i, type: 'elseif' },
+  ];
+  const blockClosers = {
+    'if': 'end',
+    'for': 'end',
+    'while': 'end',
+    'function': 'end',
+    'do': 'end',
+    'repeat': 'until',
+    'else': 'end',
+    'elseif': 'end',
+  };
+  let stack = [];
+  let output = [];
+  for (let i = 0; i < cleanedLines.length; i++) {
+    let line = cleanedLines[i];
+    let trimmed = line.trim();
+    let matched = false;
+    for (let opener of blockOpeners) {
+      if (opener.regex.test(trimmed)) {
+        stack.push({ type: opener.type, line: i });
+        matched = true;
+        break;
+      }
+    }
+    output.push(line);
+    // Special handling for 'repeat' block: closes with 'until' not 'end'
+    if (/^\s*until\b/i.test(trimmed)) {
+      // Close the last 'repeat'
+      let idx = stack.length - 1;
+      while (idx >= 0 && stack[idx].type !== 'repeat') idx--;
+      if (idx >= 0) stack.splice(idx, 1);
+    }
+    // Special handling for 'else'/'elseif': close previous 'if' block
+    if (/^\s*else\b/i.test(trimmed) || /^\s*elseif\b.*then\b/i.test(trimmed)) {
+      // Close previous block if it's 'if' or 'elseif'
+      let idx = stack.length - 1;
+      while (idx >= 0 && stack[idx].type !== 'if' && stack[idx].type !== 'elseif') idx--;
+      if (idx >= 0) stack.splice(idx, 1);
+      stack.push({ type: 'else', line: i });
+    }
+  }
+  // Now close all open blocks
+  while (stack.length > 0) {
+    let block = stack.pop();
+    let closer = blockClosers[block.type] || 'end';
+    if (closer === 'until') {
+      output.push('until true');
+    } else {
+      // Inline closure logic: if next line is a closing paren, append 'end' to current line
+      let merged = false;
+      for (let i = 0; i < output.length - 1; i++) {
+        let curr = output[i];
+        let next = output[i + 1].trim();
+        if (/^\)*[,;]?$/i.test(next)) {
+          // Find indentation of curr line
+          let indent = curr.match(/^\s*/)[0];
+          output[i] = curr + '\n' + indent + 'end';
+          merged = true;
+          break;
+        }
+      }
+      if (!merged) {
+        // If the last line is a closing paren, append 'end' before it
+        if (output.length > 1 && /^\)*[,;]?$/i.test(output[output.length - 1].trim())) {
+          let prev = output[output.length - 2];
+          let indent = prev ? prev.match(/^\s*/)[0] : '';
+          output[output.length - 2] = prev + '\n' + indent + 'end';
+        } else {
+          output.push('end');
+        }
+      }
+    }
+  }
+
+  // Bracket/parenthesis balance check
+  let paren = 0, square = 0, curly = 0;
+  for (let line of output) {
+    for (let c of line) {
+      if (c === '(') paren++;
+      if (c === ')') paren--;
+      if (c === '[') square++;
+      if (c === ']') square--;
+      if (c === '{') curly++;
+      if (c === '}') curly--;
+    }
+  }
+  while (paren > 0) { output.push(')'); paren--; }
+  while (square > 0) { output.push(']'); square--; }
+  while (curly > 0) { output.push('}'); curly--; }
+
+  return output.join('\n');
+}
+// ... existing code ...
+// Patch generateLua to use reconstructLuaEnds
+const _original_generateLua = generateLua;
+generateLua = function(workspace) {
+  let code = '';
+  // Use the original logic to get the code string
+  const blocks = workspace.getTopBlocks(true);
+  if (blocks.length === 0) {
+    code = '-- No blocks found in workspace\n-- Drag blocks from the toolbox to start coding!';
+  } else {
+    // Use the original generateLua logic
+    _original_generateLua(workspace);
+    code = document.getElementById('codeOutput').textContent;
+  }
+  // Remove and reconstruct ends
+  code = reconstructLuaEnds(code);
+  document.getElementById('codeOutput').textContent = code;
+};
+// ... existing code ...

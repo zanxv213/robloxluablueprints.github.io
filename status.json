@@ -1,5 +1,5 @@
 {
-  "status": "Maintenance",
+  "status": "Beta",
 
 
   "owner": "ZanXv",
@@ -8,6 +8,6 @@
     "Maintenance": "The site is under maintenance. Features are temporarily unavailable.",
     "Suspended": "The site is suspended. No actions can be performed at this time.",
     "Updating": "The site is currently updating. Please wait while new features are being deployed.",
-    "Beta": "The site is in beta mode. Features may change or be unstable. Feedback is welcome!"
+    "Beta": "The site is in beta mode. Features may change or be unstable."
   }
-} 
+}   
